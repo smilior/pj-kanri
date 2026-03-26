@@ -18,11 +18,12 @@ def _get_period_range(period: str | None, week_end: int = 3):
     today = now.replace(hour=0, minute=0, second=0, microsecond=0)
     if period == "today":
         return today, today + timedelta(days=1)
-    if period == "this-week":
+    if period in ("this-week", "last-week"):
         weekday = today.weekday()  # Monday=0
-        # Find the most recent occurrence of week_end (including today)
         diff = (weekday - week_end) % 7
         end_date = today - timedelta(days=diff)
+        if period == "last-week":
+            end_date = end_date - timedelta(days=7)
         start_date = end_date - timedelta(days=6)
         return start_date, end_date + timedelta(days=1)  # end is exclusive
     if period == "this-month":
@@ -63,12 +64,10 @@ def get_summary(
     db: Session = Depends(get_db),
 ):
     tasks = _apply_filters(db.query(Task), category, period, week_end).all()
-    return SummaryOut(
-        total=len(tasks),
-        routine=sum(1 for t in tasks if t.category == "定常保守"),
-        adhoc=sum(1 for t in tasks if t.category == "突発保守"),
-        request=sum(1 for t in tasks if t.category == "依頼対応"),
-    )
+    by_category = {}
+    for t in tasks:
+        by_category[t.category] = by_category.get(t.category, 0) + 1
+    return SummaryOut(total=len(tasks), by_category=by_category)
 
 
 @router.post("", response_model=TaskOut, status_code=201)

@@ -35,6 +35,31 @@ class TaskOut(BaseModel):
 
 class SummaryOut(BaseModel):
     total: int
-    routine: int
-    adhoc: int
-    request: int
+    by_category: dict[str, int]
+
+
+class MasterItemOut(BaseModel):
+    id: int
+    name: str
+    sort_order: int
+
+    model_config = {"from_attributes": True}
+
+
+class MasterItemCreate(BaseModel):
+    name: str
+
+
+class MasterItemReorder(BaseModel):
+    ids: list[int]
+
+
+class SettingOut(BaseModel):
+    key: str
+    value: str
+
+    model_config = {"from_attributes": True}
+
+
+class SettingUpdate(BaseModel):
+    value: str

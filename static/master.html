@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>マスタ管理 - PJ案件外 作業管理</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'Noto Sans JP', 'system-ui', 'sans-serif'] },
+          colors: {
+            brand: {
+              50: '#eef2ff', 100: '#e0e7ff', 200: '#c7d2fe', 300: '#a5b4fc',
+              400: '#818cf8', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca',
+              800: '#3730a3', 900: '#312e81',
+            },
+          },
+          boxShadow: {
+            card: '0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04)',
+          },
+        }
+      }
+    }
+  </script>
+  <style>
+    * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+    [x-cloak] { display: none !important; }
+    .filter-select {
+      appearance:none;
+      background-image:url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+      background-position:right 8px center; background-repeat:no-repeat; background-size:16px; padding-right:32px;
+    }
+    .fade-in { animation: fadeIn .15s ease-out; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
+  </style>
+</head>
+<body class="bg-slate-50/80 min-h-screen font-sans" x-cloak x-data="masterApp()" x-init="init()">
+
+  <!-- ヘッダー -->
+  <header class="bg-white/80 backdrop-blur-lg border-b border-slate-200/60 sticky top-0 z-30">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <a href="/" class="flex items-center gap-2.5 text-slate-400 hover:text-slate-600 transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>
+          <span class="text-xs font-medium">戻る</span>
+        </a>
+        <div class="w-px h-5 bg-slate-200 mx-1"></div>
+        <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center">
+          <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 010 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 010-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        </div>
+        <h1 class="text-sm font-bold text-slate-900 tracking-tight">マスタ管理</h1>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- 基本設定 -->
+    <section class="bg-white rounded-xl border border-slate-200/60 shadow-card overflow-hidden">
+      <div class="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2">
+        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75"/></svg>
+        <h2 class="text-[13px] font-bold text-slate-700">基本設定</h2>
+      </div>
+      <div class="px-5 py-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-slate-900">デフォルトの締め曜日</p>
+            <p class="text-xs text-slate-400 mt-0.5">「今週」フィルタの終了日</p>
+          </div>
+          <select x-model="defaultWeekEnd" @change="saveSetting('default_week_end', defaultWeekEnd)" class="filter-select border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 bg-white hover:border-slate-300 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-400 outline-none transition-colors">
+            <option value="0">月曜</option>
+            <option value="1">火曜</option>
+            <option value="2">水曜</option>
+            <option value="3">木曜</option>
+            <option value="4">金曜</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- 分類項目 & 作業種別 (2カラム) -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+      <!-- 分類項目 -->
+      <section class="bg-white rounded-xl border border-slate-200/60 shadow-card overflow-hidden">
+        <div class="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2">
+          <svg class="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z"/><path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z"/></svg>
+          <h2 class="text-[13px] font-bold text-slate-700">分類項目</h2>
+        </div>
+        <div class="divide-y divide-slate-50">
+          <template x-for="item in categories" :key="item.id">
+            <div class="px-5 py-3 flex items-center justify-between fade-in">
+              <span class="text-sm text-slate-700" x-text="item.name"></span>
+              <button @click="deleteItem('categories', item.id)" class="w-7 h-7 rounded-md flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+          </template>
+        </div>
+        <div class="px-5 py-3 border-t border-slate-100">
+          <form @submit.prevent="addItem('categories')" class="flex gap-2">
+            <input type="text" x-model="newCategory" required placeholder="新しい分類を追加..."
+              class="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 placeholder:text-slate-300 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-400 outline-none transition-colors">
+            <button type="submit" class="px-3 py-2 text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 rounded-lg transition-colors shadow-sm">追加</button>
+          </form>
+        </div>
+      </section>
+
+      <!-- 作業種別 -->
+      <section class="bg-white rounded-xl border border-slate-200/60 shadow-card overflow-hidden">
+        <div class="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2">
+          <svg class="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z"/></svg>
+          <h2 class="text-[13px] font-bold text-slate-700">作業種別</h2>
+        </div>
+        <div class="divide-y divide-slate-50">
+          <template x-for="item in taskTypes" :key="item.id">
+            <div class="px-5 py-3 flex items-center justify-between fade-in">
+              <span class="text-sm text-slate-700" x-text="item.name"></span>
+              <button @click="deleteItem('task-types', item.id)" class="w-7 h-7 rounded-md flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+          </template>
+        </div>
+        <div class="px-5 py-3 border-t border-slate-100">
+          <form @submit.prevent="addItem('task-types')" class="flex gap-2">
+            <input type="text" x-model="newTaskType" required placeholder="新しい作業種別を追加..."
+              class="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 placeholder:text-slate-300 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-400 outline-none transition-colors">
+            <button type="submit" class="px-3 py-2 text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 rounded-lg transition-colors shadow-sm">追加</button>
+          </form>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- メンバー -->
+    <section class="bg-white rounded-xl border border-slate-200/60 shadow-card overflow-hidden">
+      <div class="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2">
+        <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/></svg>
+        <h2 class="text-[13px] font-bold text-slate-700">メンバー</h2>
+      </div>
+      <div class="divide-y divide-slate-50">
+        <template x-for="m in members" :key="m.id">
+          <div class="px-5 py-3 flex items-center justify-between fade-in">
+            <div class="flex items-center gap-2.5">
+              <span class="w-7 h-7 rounded-full bg-brand-100 text-brand-600 flex items-center justify-center text-[10px] font-bold" x-text="m.name.charAt(0)"></span>
+              <span class="text-sm text-slate-700" x-text="m.name"></span>
+            </div>
+            <button @click="deleteMember(m.id)" class="w-7 h-7 rounded-md flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
+        </template>
+      </div>
+      <div class="px-5 py-3 border-t border-slate-100">
+        <form @submit.prevent="addMember()" class="flex gap-2">
+          <input type="text" x-model="newMember" required placeholder="新しいメンバーを追加..."
+            class="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 placeholder:text-slate-300 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-400 outline-none transition-colors">
+          <button type="submit" class="px-3 py-2 text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 rounded-lg transition-colors shadow-sm">追加</button>
+        </form>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    function masterApp() {
+      return {
+        defaultWeekEnd: '3',
+        categories: [],
+        taskTypes: [],
+        members: [],
+        newCategory: '',
+        newTaskType: '',
+        newMember: '',
+
+        async init() {
+          const [cats, types, settings, members] = await Promise.all([
+            fetch('/api/master/categories').then(r => r.json()),
+            fetch('/api/master/task-types').then(r => r.json()),
+            fetch('/api/master/settings').then(r => r.json()),
+            fetch('/api/master/members').then(r => r.json()),
+          ]);
+          this.categories = cats;
+          this.taskTypes = types;
+          this.members = members;
+          const weSetting = settings.find(s => s.key === 'default_week_end');
+          if (weSetting) this.defaultWeekEnd = weSetting.value;
+        },
+
+        async saveSetting(key, value) {
+          await fetch(`/api/master/settings/${key}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ value: String(value) }),
+          });
+        },
+
+        async addItem(type) {
+          const name = type === 'categories' ? this.newCategory : this.newTaskType;
+          if (!name.trim()) return;
+          await fetch(`/api/master/${type}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: name.trim() }),
+          });
+          if (type === 'categories') { this.newCategory = ''; this.categories = await fetch('/api/master/categories').then(r => r.json()); }
+          else { this.newTaskType = ''; this.taskTypes = await fetch('/api/master/task-types').then(r => r.json()); }
+        },
+
+        async deleteItem(type, id) {
+          await fetch(`/api/master/${type}/${id}`, { method: 'DELETE' });
+          if (type === 'categories') this.categories = await fetch('/api/master/categories').then(r => r.json());
+          else this.taskTypes = await fetch('/api/master/task-types').then(r => r.json());
+        },
+
+        async addMember() {
+          if (!this.newMember.trim()) return;
+          await fetch('/api/master/members', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: this.newMember.trim() }),
+          });
+          this.newMember = '';
+          this.members = await fetch('/api/master/members').then(r => r.json());
+        },
+
+        async deleteMember(id) {
+          await fetch(`/api/master/members/${id}`, { method: 'DELETE' });
+          this.members = await fetch('/api/master/members').then(r => r.json());
+        },
+      };
+    }
+  </script>
+</body>
+</html>
