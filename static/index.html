@@ -48,9 +48,10 @@
     .task-row { animation: rowIn .15s ease-out; }
     @keyframes rowIn { from { opacity:0; } to { opacity:1; } }
     .filter-select {
-      appearance:none;
+      appearance:none !important;
       background-image:url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-      background-position:right 8px center; background-repeat:no-repeat; background-size:16px; padding-right:32px;
+      background-position:right 10px center; background-repeat:no-repeat; background-size:18px;
+      padding-right:40px !important;
     }
     [x-cloak] { display: none !important; }
   </style>
@@ -109,13 +110,13 @@
     <div class="bg-white rounded-xl border border-slate-200/60 shadow-card">
       <!-- フィルタ行 -->
       <div class="px-4 py-2.5 flex flex-wrap items-center gap-2 border-b border-slate-100">
-        <select x-model="filterCategory" @change="fetchTasks()" class="filter-select border border-slate-200 rounded-lg px-3 py-1.5 text-[13px] font-medium text-slate-600 bg-white hover:border-slate-300 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-400 outline-none transition-colors">
+        <select x-model="filterCategory" @change="fetchTasks()" class="filter-select border border-slate-200 rounded-lg px-3.5 py-2 text-sm font-medium text-slate-600 bg-white hover:border-slate-300 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-400 outline-none transition-colors">
           <option value="">分類: すべて</option>
           <template x-for="c in categories" :key="c.id">
             <option :value="c.name" x-text="c.name"></option>
           </template>
         </select>
-        <select x-model="filterPeriod" @change="fetchTasks()" class="filter-select border border-slate-200 rounded-lg px-3 py-1.5 text-[13px] font-medium text-slate-600 bg-white hover:border-slate-300 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-400 outline-none transition-colors">
+        <select x-model="filterPeriod" @change="fetchTasks()" class="filter-select border border-slate-200 rounded-lg px-3.5 py-2 text-sm font-medium text-slate-600 bg-white hover:border-slate-300 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-400 outline-none transition-colors">
           <option value="">期間: すべて</option>
           <option value="today">今日</option>
           <option value="this-week">今週</option>
@@ -125,7 +126,7 @@
 <span x-show="periodLabel" x-transition x-text="periodLabel" class="text-[11px] font-semibold text-brand-600 bg-brand-50 px-2 py-0.5 rounded-md tracking-wide"></span>
         <button @click="clearFilters()" class="text-[11px] font-medium text-slate-400 hover:text-slate-600 transition-colors">クリア</button>
         <div class="flex-1"></div>
-        <select x-model="groupBy" class="filter-select border border-slate-200 rounded-lg px-3 py-1.5 text-[13px] font-medium text-slate-600 bg-white hover:border-slate-300 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-400 outline-none transition-colors">
+        <select x-model="groupBy" class="filter-select border border-slate-200 rounded-lg px-3.5 py-2 text-sm font-medium text-slate-600 bg-white hover:border-slate-300 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-400 outline-none transition-colors">
           <option value="category">グループ: 分類別</option>
           <option value="type">グループ: 作業種別</option>
           <option value="registeredBy">グループ: 担当者別</option>
@@ -225,11 +226,21 @@
   </div>
 
   <script>
-    const CATEGORY_STYLES = {
-      '定常保守': 'bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-200',
-      '突発保守': 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200',
-      '依頼対応': 'bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200',
-    };
+    // インデックスベースのカラーパレット（分類が増えても自動で色がつく）
+    const PALETTE = [
+      { badge: 'bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-200', dot: 'bg-violet-400', text: 'text-violet-600' },
+      { badge: 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200',   dot: 'bg-amber-400',  text: 'text-amber-600' },
+      { badge: 'bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200',          dot: 'bg-sky-400',    text: 'text-sky-600' },
+      { badge: 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200', dot: 'bg-emerald-400', text: 'text-emerald-600' },
+      { badge: 'bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-200',       dot: 'bg-rose-400',   text: 'text-rose-600' },
+      { badge: 'bg-teal-50 text-teal-700 ring-1 ring-inset ring-teal-200',       dot: 'bg-teal-400',   text: 'text-teal-600' },
+      { badge: 'bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-200',  dot: 'bg-indigo-400', text: 'text-indigo-600' },
+      { badge: 'bg-orange-50 text-orange-700 ring-1 ring-inset ring-orange-200',  dot: 'bg-orange-400', text: 'text-orange-600' },
+    ];
+    function getCategoryPalette(name) {
+      const i = CATEGORY_ORDER.indexOf(name);
+      return PALETTE[(i >= 0 ? i : 0) % PALETTE.length];
+    }
     let CATEGORY_ORDER = [];
     let TYPE_ORDER = [];
     const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
@@ -310,15 +321,8 @@
           return `${fmt(start)} – ${fmt(end)}`;
         },
 
-        categoryDotColor(name) {
-          const i = CATEGORY_ORDER.indexOf(name) % 5;
-          return ['bg-violet-400','bg-amber-400','bg-sky-400','bg-emerald-400','bg-rose-400'][i] || 'bg-slate-400';
-        },
-
-        categorySummaryColor(name) {
-          const i = CATEGORY_ORDER.indexOf(name) % 5;
-          return ['text-violet-600','text-amber-600','text-sky-600','text-emerald-600','text-rose-600'][i] || 'text-slate-600';
-        },
+        categoryDotColor(name) { return getCategoryPalette(name).dot; },
+        categorySummaryColor(name) { return getCategoryPalette(name).text; },
 
         escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; },
 
@@ -343,7 +347,7 @@
 
           function row(t) {
             const c = [];
-            if (!hC) c.push(`<td class="px-5 py-3"><span class="inline-flex px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${CATEGORY_STYLES[t.category]||''}">${self.escapeHtml(t.category)}</span></td>`);
+            if (!hC) c.push(`<td class="px-5 py-3"><span class="inline-flex px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${getCategoryPalette(t.category).badge}">${self.escapeHtml(t.category)}</span></td>`);
             c.push(`<td class="px-5 py-3 text-sm text-slate-900 font-medium"><div class="truncate max-w-xs">${self.escapeHtml(t.name)}</div></td>`);
             if (!hT) c.push(`<td class="px-5 py-3 text-sm text-slate-500">${t.type ? self.escapeHtml(t.type) : '<span class="text-slate-300">—</span>'}</td>`);
             if (!hU) c.push(`<td class="px-5 py-3 text-sm text-slate-600">${self.escapeHtml(t.registered_by)}</td>`);
