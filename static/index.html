@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PJ案件外 作業管理</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'Noto Sans JP', 'system-ui', 'sans-serif'] },
+          colors: {
+            brand: {
+              50: '#eef2ff', 100: '#e0e7ff', 200: '#c7d2fe', 300: '#a5b4fc',
+              400: '#818cf8', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca',
+              800: '#3730a3', 900: '#312e81',
+            },
+          },
+          boxShadow: {
+            card: '0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04)',
+            modal: '0 25px 50px -12px rgb(0 0 0 / 0.25)',
+          },
+        }
+      }
+    }
+  </script>
+  <style>
+    * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+    .modal-enter { animation: modalIn 0.2s ease-out; }
+    @keyframes modalIn { from { opacity:0; transform:scale(.95) translateY(8px); } to { opacity:1; transform:scale(1) translateY(0); } }
+    .radio-chip input { position:absolute; opacity:0; pointer-events:none; }
+    .radio-chip .chip {
+      display:inline-flex; align-items:center; gap:6px;
+      padding:7px 16px; border-radius:9999px; font-size:13px; font-weight:500;
+      border:1.5px solid #e2e8f0; color:#64748b; background:white;
+      cursor:pointer; transition:all .15s ease; user-select:none;
+    }
+    .radio-chip .chip:hover { border-color:#c7d2fe; color:#4f46e5; background:#f5f3ff; }
+    .radio-chip input:checked + .chip { border-color:#6366f1; color:#4f46e5; background:#eef2ff; box-shadow:0 0 0 1px #6366f1; }
+    .task-row { animation: rowIn .15s ease-out; }
+    @keyframes rowIn { from { opacity:0; } to { opacity:1; } }
+    .filter-select {
+      appearance:none;
+      background-image:url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+      background-position:right 8px center; background-repeat:no-repeat; background-size:16px; padding-right:32px;
+    }
+    [x-cloak] { display: none !important; }
+  </style>
+</head>
+<body class="bg-slate-50/80 min-h-screen font-sans" x-cloak x-data="app()" x-init="init()">
+
+  <!-- 名前選択画面 -->
+  <div x-show="showUserSelect" x-transition.opacity class="fixed inset-0 z-50 bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
+    <div class="bg-white rounded-2xl shadow-modal w-full max-w-xs mx-4 overflow-hidden modal-enter">
+      <div class="bg-gradient-to-br from-brand-500 to-brand-700 px-8 pt-8 pb-6 text-center">
+        <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center">
+          <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
+        </div>
+        <h2 class="text-lg font-bold text-white mb-0.5">ようこそ</h2>
+        <p class="text-sm text-brand-200">あなたの名前を選んでください</p>
+      </div>
+      <div class="p-5 space-y-2">
+        <template x-for="m in members" :key="m.id">
+          <button @click="selectUser(m.name)" class="w-full px-4 py-3 rounded-xl text-sm font-semibold text-slate-700 bg-slate-50 hover:bg-brand-50 hover:text-brand-700 border border-slate-200 hover:border-brand-300 transition-all duration-150 flex items-center gap-3">
+            <span class="w-8 h-8 rounded-full bg-brand-100 text-brand-600 flex items-center justify-center text-xs font-bold" x-text="m.name.charAt(0)"></span>
+            <span x-text="m.name"></span>
+          </button>
+        </template>
+      </div>
+    </div>
+  </div>
+
+  <!-- ヘッダー -->
+  <header class="bg-white/80 backdrop-blur-lg border-b border-slate-200/60 sticky top-0 z-30">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center">
+          <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+        </div>
+        <h1 class="text-sm font-bold text-slate-900 tracking-tight">PJ案件外 作業管理</h1>
+      </div>
+      <div class="flex items-center gap-2">
+        <button @click="showUserSelect = true" class="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-full text-xs text-slate-600 hover:bg-slate-100 transition-colors border border-transparent hover:border-slate-200">
+          <span class="w-6 h-6 rounded-full bg-brand-100 text-brand-600 flex items-center justify-center text-[10px] font-bold" x-text="currentUser.charAt(0)"></span>
+          <span class="font-medium" x-text="currentUser"></span>
+        </button>
+        <button @click="openCreateModal()" class="bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white pl-3 pr-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 flex items-center gap-1.5 shadow-sm hover:shadow">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+          登録
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5 space-y-4">
+
+    <!-- フィルタ & サマリー 統合バー -->
+    <div class="bg-white rounded-xl border border-slate-200/60 shadow-card">
+      <!-- フィルタ行 -->
+      <div class="px-4 py-2.5 flex flex-wrap items-center gap-2 border-b border-slate-100">
+        <select x-model="filterCategory" @change="fetchTasks()" class="filter-select border border-slate-200 rounded-lg px-3 py-1.5 text-[13px] font-medium text-slate-600 bg-white hover:border-slate-300 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-400 outline-none transition-colors">
+          <option value="">分類: すべて</option>
+          <option value="定常保守">定常保守</option>
+          <option value="突発保守">突発保守</option>
+          <option value="依頼対応">依頼対応</option>
+        </select>
+        <select x-model="filterPeriod" @change="fetchTasks()" class="filter-select border border-slate-200 rounded-lg px-3 py-1.5 text-[13px] font-medium text-slate-600 bg-white hover:border-slate-300 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-400 outline-none transition-colors">
+          <option value="">期間: すべて</option>
+          <option value="today">今日</option>
+          <option value="this-week">今週</option>
+          <option value="this-month">今月</option>
+        </select>
+        <select x-show="filterPeriod === 'this-week'" x-transition x-model="weekEnd" @change="saveWeekEnd(); fetchTasks()" class="filter-select border border-slate-200 rounded-lg px-3 py-1.5 text-[13px] font-medium text-slate-600 bg-white hover:border-slate-300 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-400 outline-none transition-colors">
+          <option value="0">締め: 月曜</option>
+          <option value="1">締め: 火曜</option>
+          <option value="2">締め: 水曜</option>
+          <option value="3">締め: 木曜</option>
+          <option value="4">締め: 金曜</option>
+        </select>
+        <span x-show="periodLabel" x-transition x-text="periodLabel" class="text-[11px] font-semibold text-brand-600 bg-brand-50 px-2 py-0.5 rounded-md tracking-wide"></span>
+        <button @click="clearFilters()" class="text-[11px] font-medium text-slate-400 hover:text-slate-600 transition-colors">クリア</button>
+        <div class="flex-1"></div>
+        <select x-model="groupBy" class="filter-select border border-slate-200 rounded-lg px-3 py-1.5 text-[13px] font-medium text-slate-600 bg-white hover:border-slate-300 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-400 outline-none transition-colors">
+          <option value="category">グループ: 分類別</option>
+          <option value="type">グループ: 作業種別</option>
+          <option value="registeredBy">グループ: 担当者別</option>
+          <option value="none">グループ: なし</option>
+        </select>
+      </div>
+      <!-- サマリー行 -->
+      <div class="px-4 py-2.5 flex items-center gap-6">
+        <div class="flex items-center gap-2">
+          <span class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">合計</span>
+          <span class="text-lg font-bold text-slate-900 tabular-nums leading-none" x-text="summary.total">0</span>
+        </div>
+        <div class="w-px h-5 bg-slate-200"></div>
+        <div class="flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-violet-400"></span>
+          <span class="text-[11px] font-medium text-slate-500">定常</span>
+          <span class="text-sm font-bold text-violet-600 tabular-nums" x-text="summary.routine">0</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+          <span class="text-[11px] font-medium text-slate-500">突発</span>
+          <span class="text-sm font-bold text-amber-600 tabular-nums" x-text="summary.adhoc">0</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+          <span class="text-[11px] font-medium text-slate-500">依頼</span>
+          <span class="text-sm font-bold text-sky-600 tabular-nums" x-text="summary.request">0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 作業一覧 -->
+    <div class="bg-white rounded-xl border border-slate-200/60 shadow-card overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead id="table-head" x-effect="renderTableHead()"></thead>
+          <tbody id="task-body" class="divide-y divide-slate-50" x-effect="renderTableBody()"></tbody>
+        </table>
+      </div>
+      <div x-show="tasks.length === 0" class="py-16 text-center">
+        <div class="w-14 h-14 mx-auto mb-3 rounded-2xl bg-slate-100 flex items-center justify-center">
+          <svg class="w-6 h-6 text-slate-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
+        </div>
+        <p class="text-slate-500 text-sm font-medium">作業が登録されていません</p>
+        <p class="text-slate-400 text-xs mt-1">「登録」ボタンから追加してください</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- 登録/編集モーダル -->
+  <div x-show="showModal" x-transition.opacity class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center" @click.self="closeModal()">
+    <div class="bg-white rounded-2xl shadow-modal w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto modal-enter" @click.stop>
+      <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+        <h2 class="text-sm font-bold text-slate-900" x-text="editingId ? '作業を編集' : '作業を登録'"></h2>
+        <button @click="closeModal()" class="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <form @submit.prevent="submitForm()" class="px-6 py-5 space-y-5">
+        <div>
+          <label class="block text-[13px] font-semibold text-slate-700 mb-1.5">作業名 <span class="text-red-400">*</span></label>
+          <input type="text" x-model="form.name" required placeholder="例: サーバーアップデート作業"
+            class="w-full border border-slate-200 rounded-lg px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-300 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-400 outline-none transition-colors">
+        </div>
+        <div>
+          <label class="block text-[13px] font-semibold text-slate-700 mb-2.5">分類 <span class="text-red-400">*</span></label>
+          <div class="flex gap-2.5">
+            <label class="radio-chip">
+              <input type="radio" x-model="form.category" value="定常保守" required>
+              <span class="chip">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3"/></svg>
+                定常保守
+              </span>
+            </label>
+            <label class="radio-chip">
+              <input type="radio" x-model="form.category" value="突発保守">
+              <span class="chip">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"/></svg>
+                突発保守
+              </span>
+            </label>
+            <label class="radio-chip">
+              <input type="radio" x-model="form.category" value="依頼対応">
+              <span class="chip">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/></svg>
+                依頼対応
+              </span>
+            </label>
+          </div>
+        </div>
+        <div>
+          <label class="block text-[13px] font-semibold text-slate-700 mb-2.5">作業種別 <span class="text-red-400">*</span></label>
+          <div class="flex flex-wrap gap-2">
+            <template x-for="t in taskTypes" :key="t">
+              <label class="radio-chip"><input type="radio" x-model="form.type" :value="t" required><span class="chip" x-text="t"></span></label>
+            </template>
+          </div>
+        </div>
+        <div class="flex justify-end gap-2.5 pt-1 border-t border-slate-100 -mx-6 px-6 mt-5 pt-4">
+          <button type="button" @click="closeModal()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">キャンセル</button>
+          <button type="submit" class="px-5 py-2 text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 rounded-lg transition-all shadow-sm hover:shadow" x-text="editingId ? '更新する' : '登録する'"></button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 削除確認モーダル -->
+  <div x-show="showDeleteConfirm" x-transition.opacity class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center" @click.self="showDeleteConfirm = false">
+    <div class="bg-white rounded-2xl shadow-modal w-full max-w-sm mx-4 p-6 text-center modal-enter" @click.stop>
+      <div class="w-11 h-11 mx-auto mb-3 rounded-full bg-red-50 flex items-center justify-center">
+        <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg>
+      </div>
+      <p class="text-slate-900 font-semibold text-sm mb-0.5">この作業を削除しますか？</p>
+      <p class="text-slate-500 text-xs mb-5" x-text="deleteTarget?.name"></p>
+      <div class="flex justify-center gap-2.5">
+        <button @click="showDeleteConfirm = false" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors min-w-[80px]">キャンセル</button>
+        <button @click="executeDelete()" class="px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-all shadow-sm min-w-[80px]">削除</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const CATEGORY_STYLES = {
+      '定常保守': 'bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-200',
+      '突発保守': 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200',
+      '依頼対応': 'bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200',
+    };
+    const CATEGORY_ORDER = ['定常保守', '突発保守', '依頼対応'];
+    const TYPE_ORDER = ['問い合わせ対応', 'バグ修正', '定期メンテナンス', 'ドキュメント更新', 'その他'];
+    const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
+
+    function app() {
+      return {
+        currentUser: localStorage.getItem('currentUser') || '',
+        members: [],
+        tasks: [],
+        summary: { total: 0, routine: 0, adhoc: 0, request: 0 },
+        filterCategory: '',
+        filterPeriod: 'this-week',
+        weekEnd: localStorage.getItem('weekEnd') || '3',
+        groupBy: 'category',
+        showUserSelect: false,
+        showModal: false,
+        showDeleteConfirm: false,
+        editingId: null,
+        deleteTarget: null,
+        form: { name: '', category: '', type: '' },
+        taskTypes: TYPE_ORDER,
+
+        async init() {
+          await this.fetchMembers();
+          if (!this.currentUser) this.showUserSelect = true;
+          await this.fetchTasks();
+        },
+
+        async fetchMembers() {
+          this.members = await (await fetch('/api/members')).json();
+        },
+
+        async fetchTasks() {
+          const p = new URLSearchParams();
+          if (this.filterCategory) p.set('category', this.filterCategory);
+          if (this.filterPeriod) p.set('period', this.filterPeriod);
+          if (this.filterPeriod === 'this-week') p.set('week_end', this.weekEnd);
+          const [t, s] = await Promise.all([fetch('/api/tasks?' + p), fetch('/api/tasks/summary?' + p)]);
+          this.tasks = await t.json();
+          this.summary = await s.json();
+        },
+
+        saveWeekEnd() { localStorage.setItem('weekEnd', this.weekEnd); },
+
+        selectUser(name) {
+          this.currentUser = name;
+          localStorage.setItem('currentUser', name);
+          this.showUserSelect = false;
+        },
+
+        clearFilters() { this.filterCategory = ''; this.filterPeriod = ''; this.fetchTasks(); },
+
+        get periodLabel() {
+          if (!this.filterPeriod) return '';
+          const now = new Date(), today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          let start, end;
+          if (this.filterPeriod === 'today') { start = today; end = today; }
+          else if (this.filterPeriod === 'this-week') {
+            const we = parseInt(this.weekEnd), jsDay = today.getDay(), pyDay = jsDay === 0 ? 6 : jsDay - 1;
+            const diff = (pyDay - we + 7) % 7;
+            end = new Date(today.getTime() - diff * 86400000);
+            start = new Date(end.getTime() - 6 * 86400000);
+          } else if (this.filterPeriod === 'this-month') {
+            start = new Date(now.getFullYear(), now.getMonth(), 1);
+            end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+          }
+          if (!start) return '';
+          const fmt = d => `${d.getMonth()+1}/${d.getDate()}(${WEEKDAYS[d.getDay()]})`;
+          return `${fmt(start)} – ${fmt(end)}`;
+        },
+
+        escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; },
+
+        renderTableHead() {
+          const el = document.getElementById('table-head'); if (!el) return;
+          const c = 'text-left px-5 py-2.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider';
+          const cols = [];
+          if (this.groupBy !== 'category') cols.push(`<th class="${c}">分類</th>`);
+          cols.push(`<th class="${c}">作業名</th>`);
+          if (this.groupBy !== 'type') cols.push(`<th class="${c}">作業種別</th>`);
+          if (this.groupBy !== 'registeredBy') cols.push(`<th class="${c}">担当者</th>`);
+          cols.push(`<th class="${c}">登録日</th>`);
+          cols.push(`<th class="text-right px-5 py-2.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-20">操作</th>`);
+          el.innerHTML = `<tr class="border-b border-slate-100">${cols.join('')}</tr>`;
+        },
+
+        renderTableBody() {
+          const tbody = document.getElementById('task-body'); if (!tbody) return;
+          const gb = this.groupBy, hC = gb === 'category', hT = gb === 'type', hU = gb === 'registeredBy';
+          let cc = 3; if (!hC) cc++; if (!hT) cc++; if (!hU) cc++;
+          const self = this;
+
+          function row(t) {
+            const c = [];
+            if (!hC) c.push(`<td class="px-5 py-3"><span class="inline-flex px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${CATEGORY_STYLES[t.category]||''}">${self.escapeHtml(t.category)}</span></td>`);
+            c.push(`<td class="px-5 py-3 text-sm text-slate-900 font-medium"><div class="truncate max-w-xs">${self.escapeHtml(t.name)}</div></td>`);
+            if (!hT) c.push(`<td class="px-5 py-3 text-sm text-slate-500">${t.type ? self.escapeHtml(t.type) : '<span class="text-slate-300">—</span>'}</td>`);
+            if (!hU) c.push(`<td class="px-5 py-3 text-sm text-slate-600">${self.escapeHtml(t.registered_by)}</td>`);
+            c.push(`<td class="px-5 py-3 text-sm text-slate-400 tabular-nums">${self.formatDate(t.created_at)}</td>`);
+            c.push(`<td class="px-5 py-3 text-right"><div class="flex items-center justify-end gap-0.5"><button data-edit="${t.id}" class="w-7 h-7 rounded-md flex items-center justify-center text-slate-300 hover:text-brand-600 hover:bg-brand-50 transition-colors"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125"/></svg></button><button data-delete="${t.id}" class="w-7 h-7 rounded-md flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg></button></div></td>`);
+            return `<tr class="task-row hover:bg-slate-50/60 transition-colors">${c.join('')}</tr>`;
+          }
+
+          let h = '';
+          if (gb === 'none') { this.tasks.forEach(t => { h += row(t); }); }
+          else {
+            const kf = { category: t=>t.category, type: t=>t.type||'未設定', registeredBy: t=>t.registered_by||'不明' }[gb];
+            const om = { category: CATEGORY_ORDER, type: [...TYPE_ORDER,'未設定'], registeredBy: this.members.map(m=>m.name) };
+            const o = om[gb]||[], g = {}; o.forEach(k=>{g[k]=[];}); this.tasks.forEach(t=>{const k=kf(t); if(!g[k])g[k]=[]; g[k].push(t);});
+            Object.entries(g).forEach(([l,items])=>{
+              if(!items.length) return;
+              h += `<tr><td colspan="${cc}" class="bg-slate-50/80 px-5 py-2 border-y border-slate-100"><span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">${this.escapeHtml(l)}</span><span class="text-[10px] font-semibold text-slate-400 ml-2 bg-slate-200/50 px-1.5 py-0.5 rounded">${items.length}</span></td></tr>`;
+              items.forEach(t=>{h+=row(t);});
+            });
+          }
+          tbody.innerHTML = h;
+          tbody.querySelectorAll('[data-edit]').forEach(b=>{b.addEventListener('click',()=>{const t=this.tasks.find(t=>t.id===+b.dataset.edit);if(t)this.openEditModal(t);});});
+          tbody.querySelectorAll('[data-delete]').forEach(b=>{b.addEventListener('click',()=>{const t=this.tasks.find(t=>t.id===+b.dataset.delete);if(t)this.confirmDelete(t);});});
+        },
+
+        formatDate(s) { const d=new Date(s); return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`; },
+
+        openCreateModal() { this.editingId=null; this.form={name:'',category:'',type:''}; this.showModal=true; },
+        openEditModal(t) { this.editingId=t.id; this.form={name:t.name,category:t.category,type:t.type||''}; this.showModal=true; },
+        closeModal() { this.showModal=false; this.editingId=null; this.form={name:'',category:'',type:''}; },
+
+        async submitForm() {
+          if (this.editingId) {
+            await fetch(`/api/tasks/${this.editingId}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:this.form.name,category:this.form.category,type:this.form.type}) });
+          } else {
+            await fetch('/api/tasks', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({...this.form,registered_by:this.currentUser}) });
+          }
+          this.closeModal(); await this.fetchTasks();
+        },
+
+        confirmDelete(t) { this.deleteTarget=t; this.showDeleteConfirm=true; },
+        async executeDelete() {
+          if (this.deleteTarget) { await fetch(`/api/tasks/${this.deleteTarget.id}`,{method:'DELETE'}); this.showDeleteConfirm=false; this.deleteTarget=null; await this.fetchTasks(); }
+        },
+      };
+    }
+  </script>
+</body>
+</html>
