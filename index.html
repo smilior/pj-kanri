@@ -82,6 +82,18 @@
 </head>
 <body class="bg-slate-50/80 min-h-screen font-sans">
 
+  <!-- 名前選択画面 -->
+  <div id="user-select-screen" class="fixed inset-0 z-50 bg-slate-50/80 flex items-center justify-center hidden">
+    <div class="bg-white rounded-2xl shadow-modal w-full max-w-xs mx-4 p-8 text-center modal-enter">
+      <div class="w-14 h-14 mx-auto mb-5 rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-sm">
+        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
+      </div>
+      <h2 class="text-lg font-bold text-slate-900 mb-1">ようこそ</h2>
+      <p class="text-sm text-slate-500 mb-6">あなたの名前を選んでください</p>
+      <div id="user-select-list" class="space-y-2"></div>
+    </div>
+  </div>
+
   <!-- ヘッダー -->
   <header class="bg-white/80 backdrop-blur-lg border-b border-slate-200/60 sticky top-0 z-30">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -91,13 +103,19 @@
         </div>
         <h1 class="text-base font-bold text-slate-900 tracking-tight">PJ案件外 作業管理</h1>
       </div>
-      <button
-        id="btn-open-form"
-        class="bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white pl-3.5 pr-4 py-2 rounded-lg text-sm font-semibold transition-all duration-150 flex items-center gap-1.5 shadow-sm hover:shadow"
-      >
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
-        作業を登録
-      </button>
+      <div class="flex items-center gap-3">
+        <button id="btn-change-user" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-slate-600 hover:bg-slate-100 transition-colors" title="ユーザー切替">
+          <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
+          <span id="current-user-label" class="font-medium"></span>
+        </button>
+        <button
+          id="btn-open-form"
+          class="bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white pl-3.5 pr-4 py-2 rounded-lg text-sm font-semibold transition-all duration-150 flex items-center gap-1.5 shadow-sm hover:shadow"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+          作業を登録
+        </button>
+      </div>
     </div>
   </header>
 
@@ -124,6 +142,7 @@
         <select id="group-by" class="filter-select border border-slate-200 rounded-lg px-3 py-1.5 text-[13px] font-medium text-slate-600 bg-white hover:border-slate-300 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-400 outline-none transition-colors">
           <option value="category">グループ: 分類別</option>
           <option value="type">グループ: 作業種別</option>
+          <option value="registeredBy">グループ: 担当者別</option>
           <option value="none">グループ: なし</option>
         </select>
       </div>
@@ -270,9 +289,33 @@
   </div>
 
   <script>
-    // モック: ログインユーザーをランダムで割り当て
-    const MOCK_MEMBERS = ['田中', '佐藤', '鈴木'];
-    const CURRENT_USER = MOCK_MEMBERS[Math.floor(Math.random() * MOCK_MEMBERS.length)];
+    // メンバーリスト
+    const MEMBERS = ['田中', '佐藤', '鈴木'];
+    let CURRENT_USER = localStorage.getItem('currentUser') || '';
+
+    // 名前選択画面
+    function showUserSelect() {
+      const screen = document.getElementById('user-select-screen');
+      const list = document.getElementById('user-select-list');
+      list.innerHTML = '';
+      MEMBERS.forEach(name => {
+        const btn = document.createElement('button');
+        btn.className = 'w-full px-4 py-3 rounded-xl text-sm font-semibold text-slate-700 bg-slate-50 hover:bg-brand-50 hover:text-brand-700 border border-slate-200 hover:border-brand-300 transition-all duration-150';
+        btn.textContent = name;
+        btn.addEventListener('click', () => {
+          CURRENT_USER = name;
+          localStorage.setItem('currentUser', name);
+          screen.classList.add('hidden');
+          updateUserLabel();
+        });
+        list.appendChild(btn);
+      });
+      screen.classList.remove('hidden');
+    }
+
+    function updateUserLabel() {
+      document.getElementById('current-user-label').textContent = CURRENT_USER;
+    }
 
     const CATEGORY_STYLES = {
       '定常保守': 'bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-200',
@@ -354,6 +397,7 @@
       // グループ対象の列を非表示にする
       const hideCategory = groupBy === 'category';
       const hideType = groupBy === 'type';
+      const hideUser = groupBy === 'registeredBy';
 
       // テーブルヘッダーを動的生成
       const theadEl = document.getElementById('table-head');
@@ -361,7 +405,7 @@
       if (!hideCategory) cols.push(`<th class="${thCls}">分類</th>`);
       cols.push(`<th class="${thCls}">作業名</th>`);
       if (!hideType) cols.push(`<th class="${thCls}">作業種別</th>`);
-      cols.push(`<th class="${thCls}">担当者</th>`);
+      if (!hideUser) cols.push(`<th class="${thCls}">担当者</th>`);
       cols.push(`<th class="${thCls}">登録日</th>`);
       cols.push(`<th class="${thRight}">操作</th>`);
       theadEl.innerHTML = `<tr class="border-b border-slate-100">${cols.join('')}</tr>`;
@@ -379,7 +423,7 @@
           if (!hideCategory) cells.push(`<td class="px-5 py-3.5"><span class="inline-flex px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${CATEGORY_STYLES[t.category] || ''}">${escapeHtml(t.category)}</span></td>`);
           cells.push(`<td class="px-5 py-3.5 text-sm text-slate-900 font-medium max-w-xs"><div class="truncate">${escapeHtml(t.name)}</div></td>`);
           if (!hideType) cells.push(`<td class="px-5 py-3.5 text-sm text-slate-500">${t.type ? escapeHtml(t.type) : '<span class="text-slate-300">&#8212;</span>'}</td>`);
-          cells.push(`<td class="px-5 py-3.5 text-sm text-slate-600">${escapeHtml(t.registeredBy || '')}</td>`);
+          if (!hideUser) cells.push(`<td class="px-5 py-3.5 text-sm text-slate-600">${escapeHtml(t.registeredBy || '')}</td>`);
           cells.push(`<td class="px-5 py-3.5 text-sm text-slate-400 tabular-nums">${formatDate(t.createdAt)}</td>`);
           cells.push(`<td class="px-5 py-3.5 text-right"><div class="flex items-center justify-end gap-1"><button onclick="editTask('${t.id}')" class="w-7 h-7 rounded-md flex items-center justify-center text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors" title="編集"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125"/></svg></button><button onclick="confirmDelete('${t.id}')" class="w-7 h-7 rounded-md flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="削除"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg></button></div></td>`);
           tr.innerHTML = cells.join('');
@@ -392,11 +436,13 @@
           const keyFn = {
             category: t => t.category,
             type: t => t.type || '未設定',
+            registeredBy: t => t.registeredBy || '不明',
           }[groupBy];
 
           const orderMap = {
             category: ['定常保守', '突発保守', '依頼対応'],
             type: ['問い合わせ対応', 'バグ修正', '定期メンテナンス', 'ドキュメント更新', 'その他', '未設定'],
+            registeredBy: MEMBERS,
           };
 
           const groups = {};
@@ -554,7 +600,15 @@
       render();
     });
 
+    // ユーザー切替ボタン
+    document.getElementById('btn-change-user').addEventListener('click', showUserSelect);
+
     // 初期化
+    if (!CURRENT_USER) {
+      showUserSelect();
+    } else {
+      updateUserLabel();
+    }
     render();
   </script>
 </body>
