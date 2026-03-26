@@ -4,7 +4,10 @@ from app.models import Member, Category, TaskType, Setting
 INITIAL_MEMBERS = ["田中", "佐藤", "鈴木"]
 INITIAL_CATEGORIES = ["定常保守", "突発保守", "依頼対応"]
 INITIAL_TASK_TYPES = ["問い合わせ対応", "バグ修正", "定期メンテナンス", "ドキュメント更新", "その他"]
-INITIAL_SETTINGS = {"default_week_end": "3"}  # 0=Mon,...3=Thu,...4=Fri
+INITIAL_SETTINGS = {
+    "default_week_end": "3",  # 0=Mon,...3=Thu,...4=Fri
+    "master_password": "admin",  # 初期パスワード
+}
 
 
 def seed_members(db: Session) -> None:

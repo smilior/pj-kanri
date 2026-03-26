@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -108,11 +109,25 @@ def delete_member(item_id: int, db: Session = Depends(get_db)):
     db.commit()
 
 
+# --- Auth ---
+
+class PasswordBody(BaseModel):
+    password: str
+
+
+@router.post("/auth")
+def check_password(body: PasswordBody, db: Session = Depends(get_db)):
+    setting = db.query(Setting).get("master_password")
+    if not setting or body.password != setting.value:
+        raise HTTPException(401, "Invalid password")
+    return {"ok": True}
+
+
 # --- Settings ---
 
 @router.get("/settings", response_model=list[SettingOut])
 def list_settings(db: Session = Depends(get_db)):
-    return db.query(Setting).all()
+    return [s for s in db.query(Setting).all() if s.key != "master_password"]
 
 
 @router.put("/settings/{key}", response_model=SettingOut)

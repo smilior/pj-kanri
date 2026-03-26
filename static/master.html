@@ -39,10 +39,29 @@
     @keyframes fadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
   </style>
 </head>
-<body class="bg-slate-50/80 min-h-screen font-sans" x-cloak x-data="masterApp()" x-init="init()">
+<body class="bg-slate-50/80 min-h-screen font-sans" x-cloak x-data="masterApp()">
+
+  <!-- パスワード認証画面 -->
+  <div x-show="!authenticated" class="fixed inset-0 z-50 bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
+    <div class="bg-white rounded-2xl shadow-lg w-full max-w-xs mx-4 overflow-hidden">
+      <div class="bg-gradient-to-br from-brand-500 to-brand-700 px-8 pt-7 pb-5 text-center">
+        <div class="w-14 h-14 mx-auto mb-3 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center">
+          <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/></svg>
+        </div>
+        <h2 class="text-base font-bold text-white mb-0.5">マスタ管理</h2>
+        <p class="text-xs text-brand-200">パスワードを入力してください</p>
+      </div>
+      <form @submit.prevent="login()" class="p-5 space-y-4">
+        <input type="password" x-model="password" required placeholder="パスワード" autofocus
+          class="w-full border border-slate-200 rounded-lg px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-300 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-400 outline-none transition-colors">
+        <p x-show="authError" class="text-xs text-red-500 font-medium" x-text="authError"></p>
+        <button type="submit" class="w-full px-4 py-2.5 text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 rounded-lg transition-all shadow-sm">ログイン</button>
+      </form>
+    </div>
+  </div>
 
   <!-- ヘッダー -->
-  <header class="bg-white/80 backdrop-blur-lg border-b border-slate-200/60 sticky top-0 z-30">
+  <header x-show="authenticated" class="bg-white/80 backdrop-blur-lg border-b border-slate-200/60 sticky top-0 z-30">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
       <div class="flex items-center gap-2.5">
         <a href="/" class="flex items-center gap-2.5 text-slate-400 hover:text-slate-600 transition-colors">
@@ -58,7 +77,7 @@
     </div>
   </header>
 
-  <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+  <main x-show="authenticated" class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
     <!-- 基本設定 -->
     <section class="bg-white rounded-xl border border-slate-200/60 shadow-card overflow-hidden">
@@ -66,7 +85,7 @@
         <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75"/></svg>
         <h2 class="text-[13px] font-bold text-slate-700">基本設定</h2>
       </div>
-      <div class="px-5 py-4">
+      <div class="px-5 py-4 space-y-4">
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm font-medium text-slate-900">デフォルトの締め曜日</p>
@@ -79,6 +98,21 @@
             <option value="3">木曜</option>
             <option value="4">金曜</option>
           </select>
+        </div>
+        <div class="border-t border-slate-100 pt-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-slate-900">管理パスワード</p>
+              <p class="text-xs text-slate-400 mt-0.5">この画面へのアクセスに使用</p>
+            </div>
+            <button @click="showPasswordChange = !showPasswordChange" class="text-xs font-medium text-brand-600 hover:text-brand-700 transition-colors">変更する</button>
+          </div>
+          <form x-show="showPasswordChange" x-transition @submit.prevent="changePassword()" class="mt-3 flex gap-2">
+            <input type="password" x-model="newPassword" required placeholder="新しいパスワード" minlength="1"
+              class="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 placeholder:text-slate-300 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-400 outline-none transition-colors">
+            <button type="submit" class="px-3 py-2 text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 rounded-lg transition-colors shadow-sm">保存</button>
+          </form>
+          <p x-show="passwordMsg" x-transition class="mt-2 text-xs font-medium" :class="passwordMsg === '変更しました' ? 'text-emerald-600' : 'text-red-500'" x-text="passwordMsg"></p>
         </div>
       </div>
     </section>
@@ -171,6 +205,9 @@
   <script>
     function masterApp() {
       return {
+        authenticated: false,
+        password: '',
+        authError: '',
         defaultWeekEnd: '3',
         categories: [],
         taskTypes: [],
@@ -178,6 +215,35 @@
         newCategory: '',
         newTaskType: '',
         newMember: '',
+        showPasswordChange: false,
+        newPassword: '',
+        passwordMsg: '',
+
+        async login() {
+          this.authError = '';
+          const res = await fetch('/api/master/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: this.password }),
+          });
+          if (res.ok) {
+            this.authenticated = true;
+            this.password = '';
+            await this.init();
+          } else {
+            this.authError = 'パスワードが正しくありません';
+          }
+        },
+
+        async changePassword() {
+          this.passwordMsg = '';
+          if (!this.newPassword) return;
+          await this.saveSetting('master_password', this.newPassword);
+          this.newPassword = '';
+          this.showPasswordChange = false;
+          this.passwordMsg = '変更しました';
+          setTimeout(() => { this.passwordMsg = ''; }, 3000);
+        },
 
         async init() {
           const [cats, types, settings, members] = await Promise.all([
