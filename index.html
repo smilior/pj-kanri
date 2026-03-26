@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PJ案件外 作業管理</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'Noto Sans JP', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff', 100: '#e0e7ff', 200: '#c7d2fe', 300: '#a5b4fc',
+              400: '#818cf8', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca',
+              800: '#3730a3', 900: '#312e81',
+            },
+          },
+          boxShadow: {
+            card: '0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04)',
+            elevated: '0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.05)',
+            modal: '0 25px 50px -12px rgb(0 0 0 / 0.25)',
+          },
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Smooth transitions */
+    * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+    /* Modal animation */
+    .modal-enter { animation: modalIn 0.2s ease-out; }
+    @keyframes modalIn {
+      from { opacity: 0; transform: scale(0.95) translateY(8px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    /* Overlay fade */
+    .overlay-enter { animation: fadeIn 0.15s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    /* Radio chip style */
+    .radio-chip input { position: absolute; opacity: 0; pointer-events: none; }
+    .radio-chip .chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 16px; border-radius: 9999px; font-size: 13px; font-weight: 500;
+      border: 1.5px solid #e2e8f0; color: #64748b; background: white;
+      cursor: pointer; transition: all 0.15s ease; user-select: none;
+    }
+    .radio-chip .chip:hover { border-color: #c7d2fe; color: #4f46e5; background: #f5f3ff; }
+    .radio-chip input:checked + .chip {
+      border-color: #6366f1; color: #4f46e5; background: #eef2ff;
+      box-shadow: 0 0 0 1px #6366f1;
+    }
+
+    /* Table row animation */
+    .task-row { animation: rowIn 0.15s ease-out; }
+    @keyframes rowIn { from { opacity: 0; } to { opacity: 1; } }
+
+    /* Select styling */
+    .filter-select {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+      background-position: right 8px center;
+      background-repeat: no-repeat;
+      background-size: 16px;
+      padding-right: 32px;
+    }
+  </style>
+</head>
+<body class="bg-slate-50/80 min-h-screen font-sans">
+
+  <!-- ヘッダー -->
+  <header class="bg-white/80 backdrop-blur-lg border-b border-slate-200/60 sticky top-0 z-30">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-sm">
+          <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+        </div>
+        <h1 class="text-base font-bold text-slate-900 tracking-tight">PJ案件外 作業管理</h1>
+      </div>
+      <button
+        id="btn-open-form"
+        class="bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white pl-3.5 pr-4 py-2 rounded-lg text-sm font-semibold transition-all duration-150 flex items-center gap-1.5 shadow-sm hover:shadow"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+        作業を登録
+      </button>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-5">
+
+    <!-- フィルタ -->
+    <div class="bg-white rounded-xl border border-slate-200/60 shadow-card px-4 py-3">
+      <div class="flex flex-wrap items-center gap-2.5">
+        <select id="filter-category" class="filter-select border border-slate-200 rounded-lg px-3 py-1.5 text-[13px] font-medium text-slate-600 bg-white hover:border-slate-300 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-400 outline-none transition-colors">
+          <option value="">分類: すべて</option>
+          <option value="定常保守">定常保守</option>
+          <option value="突発保守">突発保守</option>
+          <option value="依頼対応">依頼対応</option>
+        </select>
+<select id="filter-period" class="filter-select border border-slate-200 rounded-lg px-3 py-1.5 text-[13px] font-medium text-slate-600 bg-white hover:border-slate-300 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-400 outline-none transition-colors">
+          <option value="">期間: すべて</option>
+          <option value="today">今日</option>
+          <option value="this-week" selected>今週</option>
+          <option value="this-month">今月</option>
+        </select>
+        <span id="period-range-label" class="text-xs font-medium text-brand-600 bg-brand-50 px-2.5 py-1 rounded-md hidden"></span>
+        <button id="btn-clear-filter" class="text-xs font-medium text-slate-400 hover:text-slate-600 transition-colors ml-0.5">クリア</button>
+        <div class="hidden sm:block w-px h-5 bg-slate-200 mx-1"></div>
+        <select id="group-by" class="filter-select border border-slate-200 rounded-lg px-3 py-1.5 text-[13px] font-medium text-slate-600 bg-white hover:border-slate-300 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-400 outline-none transition-colors">
+          <option value="category">グループ: 分類別</option>
+          <option value="type">グループ: 作業種別</option>
+          <option value="none">グループ: なし</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- サマリー -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div class="bg-white rounded-xl border border-slate-200/60 shadow-card p-4 flex items-center gap-3.5">
+        <div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
+          <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z"/></svg>
+        </div>
+        <div>
+          <p class="text-2xl font-bold text-slate-900 leading-none" id="summary-total">0</p>
+          <p class="text-[11px] font-medium text-slate-400 mt-0.5 tracking-wide uppercase">合計</p>
+        </div>
+      </div>
+      <div class="bg-white rounded-xl border border-slate-200/60 shadow-card p-4 flex items-center gap-3.5">
+        <div class="w-10 h-10 rounded-lg bg-violet-50 flex items-center justify-center flex-shrink-0">
+          <svg class="w-5 h-5 text-violet-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3"/></svg>
+        </div>
+        <div>
+          <p class="text-2xl font-bold text-violet-600 leading-none" id="summary-routine">0</p>
+          <p class="text-[11px] font-medium text-slate-400 mt-0.5 tracking-wide uppercase">定常保守</p>
+        </div>
+      </div>
+      <div class="bg-white rounded-xl border border-slate-200/60 shadow-card p-4 flex items-center gap-3.5">
+        <div class="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
+          <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"/></svg>
+        </div>
+        <div>
+          <p class="text-2xl font-bold text-amber-600 leading-none" id="summary-adhoc">0</p>
+          <p class="text-[11px] font-medium text-slate-400 mt-0.5 tracking-wide uppercase">突発保守</p>
+        </div>
+      </div>
+      <div class="bg-white rounded-xl border border-slate-200/60 shadow-card p-4 flex items-center gap-3.5">
+        <div class="w-10 h-10 rounded-lg bg-sky-50 flex items-center justify-center flex-shrink-0">
+          <svg class="w-5 h-5 text-sky-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/></svg>
+        </div>
+        <div>
+          <p class="text-2xl font-bold text-sky-600 leading-none" id="summary-request">0</p>
+          <p class="text-[11px] font-medium text-slate-400 mt-0.5 tracking-wide uppercase">依頼対応</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 作業一覧 -->
+    <div class="bg-white rounded-xl border border-slate-200/60 shadow-card overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead id="table-head">
+          </thead>
+          <tbody id="task-list" class="divide-y divide-slate-50">
+          </tbody>
+        </table>
+      </div>
+      <!-- 空状態 -->
+      <div id="empty-state" class="py-20 text-center hidden">
+        <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-100 flex items-center justify-center">
+          <svg class="w-7 h-7 text-slate-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
+        </div>
+        <p class="text-slate-500 text-sm font-medium">作業が登録されていません</p>
+        <p class="text-slate-400 text-xs mt-1">「作業を登録」ボタンから追加してください</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- 登録モーダル -->
+  <div id="modal-overlay" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden items-center justify-center">
+    <div class="bg-white rounded-2xl shadow-modal w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto modal-enter">
+      <div class="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+        <h2 id="modal-title" class="text-base font-bold text-slate-900">作業を登録</h2>
+        <button id="btn-close-modal" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <form id="task-form" class="px-6 py-5 space-y-5">
+        <input type="hidden" id="form-id" value="">
+
+        <div>
+          <label class="block text-[13px] font-semibold text-slate-700 mb-1.5">作業名 <span class="text-red-400">*</span></label>
+          <input type="text" id="form-name" required placeholder="例: サーバーアップデート作業"
+            class="w-full border border-slate-200 rounded-lg px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-300 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-400 outline-none transition-colors">
+        </div>
+
+        <div>
+          <label class="block text-[13px] font-semibold text-slate-700 mb-2.5">分類 <span class="text-red-400">*</span></label>
+          <div class="flex gap-2.5">
+            <label class="radio-chip">
+              <input type="radio" name="form-category" value="定常保守" required>
+              <span class="chip">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3"/></svg>
+                定常保守
+              </span>
+            </label>
+            <label class="radio-chip">
+              <input type="radio" name="form-category" value="突発保守">
+              <span class="chip">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"/></svg>
+                突発保守
+              </span>
+            </label>
+            <label class="radio-chip">
+              <input type="radio" name="form-category" value="依頼対応">
+              <span class="chip">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/></svg>
+                依頼対応
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-[13px] font-semibold text-slate-700 mb-2.5">作業種別 <span class="text-red-400">*</span></label>
+          <div class="flex flex-wrap gap-2">
+            <label class="radio-chip"><input type="radio" name="form-type" value="問い合わせ対応" required><span class="chip">問い合わせ対応</span></label>
+            <label class="radio-chip"><input type="radio" name="form-type" value="バグ修正"><span class="chip">バグ修正</span></label>
+            <label class="radio-chip"><input type="radio" name="form-type" value="定期メンテナンス"><span class="chip">定期メンテナンス</span></label>
+            <label class="radio-chip"><input type="radio" name="form-type" value="ドキュメント更新"><span class="chip">ドキュメント更新</span></label>
+            <label class="radio-chip"><input type="radio" name="form-type" value="その他"><span class="chip">その他</span></label>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2.5 pt-1">
+          <button type="button" id="btn-cancel" class="px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 active:bg-slate-200 rounded-lg transition-colors">キャンセル</button>
+          <button type="submit" class="px-5 py-2.5 text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 active:bg-brand-800 rounded-lg transition-all duration-150 shadow-sm hover:shadow">登録する</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 削除確認モーダル -->
+  <div id="delete-overlay" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden items-center justify-center">
+    <div class="bg-white rounded-2xl shadow-modal w-full max-w-sm mx-4 p-6 text-center modal-enter">
+      <div class="w-12 h-12 mx-auto mb-4 rounded-full bg-red-50 flex items-center justify-center">
+        <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg>
+      </div>
+      <p class="text-slate-900 font-semibold text-[15px] mb-1">この作業を削除しますか？</p>
+      <p id="delete-task-name" class="text-slate-500 text-sm mb-6 max-w-[260px] mx-auto"></p>
+      <div class="flex justify-center gap-2.5">
+        <button id="btn-cancel-delete" class="px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors min-w-[88px]">キャンセル</button>
+        <button id="btn-confirm-delete" class="px-4 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 active:bg-red-800 rounded-lg transition-all duration-150 shadow-sm min-w-[88px]">削除する</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // モック: ログインユーザーをランダムで割り当て
+    const MOCK_MEMBERS = ['田中', '佐藤', '鈴木'];
+    const CURRENT_USER = MOCK_MEMBERS[Math.floor(Math.random() * MOCK_MEMBERS.length)];
+
+    const CATEGORY_STYLES = {
+      '定常保守': 'bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-200',
+      '突発保守': 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200',
+      '依頼対応': 'bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200',
+    };
+
+    // DOM
+    const taskListEl = document.getElementById('task-list');
+    const emptyStateEl = document.getElementById('empty-state');
+    const modalOverlay = document.getElementById('modal-overlay');
+    const deleteOverlay = document.getElementById('delete-overlay');
+    const taskForm = document.getElementById('task-form');
+    const modalTitle = document.getElementById('modal-title');
+
+    // State
+    let tasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+    let deleteTargetId = null;
+
+    // データ保存
+    function save() {
+      localStorage.setItem('tasks', JSON.stringify(tasks));
+    }
+
+    // 期間フィルタのヘルパー
+    function getPeriodRange(period) {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      if (period === 'today') {
+        return { start: today, end: new Date(today.getTime() + 86400000) };
+      }
+      if (period === 'this-week') {
+        const day = today.getDay();
+        const monday = new Date(today.getTime() - ((day === 0 ? 6 : day - 1)) * 86400000);
+        const sunday = new Date(monday.getTime() + 7 * 86400000);
+        return { start: monday, end: sunday };
+      }
+      if (period === 'this-month') {
+        const start = new Date(now.getFullYear(), now.getMonth(), 1);
+        const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+        return { start, end };
+      }
+      return null;
+    }
+
+    // サマリー更新
+    function updateSummary(filtered) {
+      document.getElementById('summary-total').textContent = filtered.length;
+      document.getElementById('summary-routine').textContent = filtered.filter(t => t.category === '定常保守').length;
+      document.getElementById('summary-adhoc').textContent = filtered.filter(t => t.category === '突発保守').length;
+      document.getElementById('summary-request').textContent = filtered.filter(t => t.category === '依頼対応').length;
+    }
+
+    // 一覧描画
+    function render() {
+      const filterCategory = document.getElementById('filter-category').value;
+      const filterPeriod = document.getElementById('filter-period').value;
+      const periodRange = getPeriodRange(filterPeriod);
+      updatePeriodLabel();
+
+      let filtered = tasks.filter(t => {
+        if (filterCategory && t.category !== filterCategory) return false;
+        if (periodRange) {
+          const d = new Date(t.createdAt);
+          if (d < periodRange.start || d >= periodRange.end) return false;
+        }
+        return true;
+      });
+
+      filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      taskListEl.innerHTML = '';
+      updateSummary(filtered);
+
+      const groupBy = document.getElementById('group-by').value;
+      const thCls = 'text-left px-5 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider';
+      const thRight = 'text-right px-5 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-24';
+
+      // グループ対象の列を非表示にする
+      const hideCategory = groupBy === 'category';
+      const hideType = groupBy === 'type';
+
+      // テーブルヘッダーを動的生成
+      const theadEl = document.getElementById('table-head');
+      const cols = [];
+      if (!hideCategory) cols.push(`<th class="${thCls}">分類</th>`);
+      cols.push(`<th class="${thCls}">作業名</th>`);
+      if (!hideType) cols.push(`<th class="${thCls}">作業種別</th>`);
+      cols.push(`<th class="${thCls}">担当者</th>`);
+      cols.push(`<th class="${thCls}">登録日</th>`);
+      cols.push(`<th class="${thRight}">操作</th>`);
+      theadEl.innerHTML = `<tr class="border-b border-slate-100">${cols.join('')}</tr>`;
+      const colCount = cols.length;
+
+      if (filtered.length === 0) {
+        emptyStateEl.classList.remove('hidden');
+      } else {
+        emptyStateEl.classList.add('hidden');
+
+        function renderRow(t) {
+          const tr = document.createElement('tr');
+          tr.className = 'task-row hover:bg-slate-50/60 transition-colors';
+          const cells = [];
+          if (!hideCategory) cells.push(`<td class="px-5 py-3.5"><span class="inline-flex px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${CATEGORY_STYLES[t.category] || ''}">${escapeHtml(t.category)}</span></td>`);
+          cells.push(`<td class="px-5 py-3.5 text-sm text-slate-900 font-medium max-w-xs"><div class="truncate">${escapeHtml(t.name)}</div></td>`);
+          if (!hideType) cells.push(`<td class="px-5 py-3.5 text-sm text-slate-500">${t.type ? escapeHtml(t.type) : '<span class="text-slate-300">&#8212;</span>'}</td>`);
+          cells.push(`<td class="px-5 py-3.5 text-sm text-slate-600">${escapeHtml(t.registeredBy || '')}</td>`);
+          cells.push(`<td class="px-5 py-3.5 text-sm text-slate-400 tabular-nums">${formatDate(t.createdAt)}</td>`);
+          cells.push(`<td class="px-5 py-3.5 text-right"><div class="flex items-center justify-end gap-1"><button onclick="editTask('${t.id}')" class="w-7 h-7 rounded-md flex items-center justify-center text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors" title="編集"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125"/></svg></button><button onclick="confirmDelete('${t.id}')" class="w-7 h-7 rounded-md flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="削除"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg></button></div></td>`);
+          tr.innerHTML = cells.join('');
+          taskListEl.appendChild(tr);
+        }
+
+        if (groupBy === 'none') {
+          filtered.forEach(renderRow);
+        } else {
+          const keyFn = {
+            category: t => t.category,
+            type: t => t.type || '未設定',
+          }[groupBy];
+
+          const orderMap = {
+            category: ['定常保守', '突発保守', '依頼対応'],
+            type: ['問い合わせ対応', 'バグ修正', '定期メンテナンス', 'ドキュメント更新', 'その他', '未設定'],
+          };
+
+          const groups = {};
+          (orderMap[groupBy] || []).forEach(k => { groups[k] = []; });
+          filtered.forEach(t => {
+            const key = keyFn(t);
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(t);
+          });
+
+          Object.entries(groups).forEach(([label, groupTasks]) => {
+            if (groupTasks.length === 0) return;
+            const headerTr = document.createElement('tr');
+            headerTr.innerHTML = `
+              <td colspan="${colCount}" class="bg-slate-50/80 px-5 py-2 border-y border-slate-100">
+                <span class="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">${escapeHtml(label)}</span>
+                <span class="text-[11px] font-medium text-slate-400 ml-2 bg-slate-200/60 px-1.5 py-0.5 rounded">${groupTasks.length}</span>
+              </td>
+            `;
+            taskListEl.appendChild(headerTr);
+            groupTasks.forEach(renderRow);
+          });
+        }
+      }
+    }
+
+    // 編集
+    function editTask(id) {
+      const task = tasks.find(t => t.id === id);
+      if (!task) return;
+      modalTitle.textContent = '作業を編集';
+      document.getElementById('form-id').value = task.id;
+      document.getElementById('form-name').value = task.name;
+      const catRadio = document.querySelector(`input[name="form-category"][value="${task.category}"]`);
+      if (catRadio) catRadio.checked = true;
+      const typeRadio = document.querySelector(`input[name="form-type"][value="${task.type}"]`);
+      if (typeRadio) typeRadio.checked = true;
+      openModal();
+    }
+
+    // 削除確認
+    function confirmDelete(id) {
+      const task = tasks.find(t => t.id === id);
+      if (!task) return;
+      deleteTargetId = id;
+      document.getElementById('delete-task-name').textContent = task.name;
+      deleteOverlay.classList.remove('hidden');
+      deleteOverlay.classList.add('flex');
+    }
+
+    // モーダル制御
+    function openModal() {
+      modalOverlay.classList.remove('hidden');
+      modalOverlay.classList.add('flex');
+      modalOverlay.classList.add('overlay-enter');
+      document.getElementById('form-name').focus();
+    }
+
+    function closeModal() {
+      modalOverlay.classList.add('hidden');
+      modalOverlay.classList.remove('flex', 'overlay-enter');
+      taskForm.reset();
+      document.getElementById('form-id').value = '';
+      modalTitle.textContent = '作業を登録';
+    }
+
+    function closeDeleteModal() {
+      deleteOverlay.classList.add('hidden');
+      deleteOverlay.classList.remove('flex');
+      deleteTargetId = null;
+    }
+
+    // ユーティリティ
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    function formatDate(dateStr) {
+      const d = new Date(dateStr);
+      return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
+    function formatRangeDate(d) {
+      return `${d.getMonth() + 1}/${d.getDate()}(${WEEKDAYS[d.getDay()]})`;
+    }
+
+    function updatePeriodLabel() {
+      const label = document.getElementById('period-range-label');
+      const period = document.getElementById('filter-period').value;
+      const range = getPeriodRange(period);
+      if (!range) {
+        label.classList.add('hidden');
+        return;
+      }
+      const endDisplay = new Date(range.end.getTime() - 86400000);
+      label.textContent = `${formatRangeDate(range.start)} \u2013 ${formatRangeDate(endDisplay)}`;
+      label.classList.remove('hidden');
+    }
+
+    function generateId() {
+      return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    }
+
+    // イベント
+    document.getElementById('btn-open-form').addEventListener('click', openModal);
+    document.getElementById('btn-close-modal').addEventListener('click', closeModal);
+    document.getElementById('btn-cancel').addEventListener('click', closeModal);
+    modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
+
+    document.getElementById('btn-cancel-delete').addEventListener('click', closeDeleteModal);
+    deleteOverlay.addEventListener('click', (e) => { if (e.target === deleteOverlay) closeDeleteModal(); });
+    document.getElementById('btn-confirm-delete').addEventListener('click', () => {
+      if (deleteTargetId) {
+        tasks = tasks.filter(t => t.id !== deleteTargetId);
+        save();
+        render();
+      }
+      closeDeleteModal();
+    });
+
+    taskForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const id = document.getElementById('form-id').value;
+      const catChecked = document.querySelector('input[name="form-category"]:checked');
+      const typeChecked = document.querySelector('input[name="form-type"]:checked');
+      const data = {
+        name: document.getElementById('form-name').value.trim(),
+        category: catChecked ? catChecked.value : '',
+        type: typeChecked ? typeChecked.value : '',
+      };
+
+      if (id) {
+        const task = tasks.find(t => t.id === id);
+        if (task) Object.assign(task, data);
+      } else {
+        tasks.push({ id: generateId(), ...data, registeredBy: CURRENT_USER, createdAt: new Date().toISOString() });
+      }
+
+      save();
+      render();
+      closeModal();
+    });
+
+    // フィルタ
+    ['filter-category', 'filter-period', 'group-by'].forEach(id => {
+      document.getElementById(id).addEventListener('change', render);
+    });
+
+    document.getElementById('btn-clear-filter').addEventListener('click', () => {
+      document.getElementById('filter-category').value = '';
+      document.getElementById('filter-period').value = '';
+      render();
+    });
+
+    // 初期化
+    render();
+  </script>
+</body>
+</html>
