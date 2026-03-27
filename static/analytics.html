@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>分析 - PJ案件外 作業管理</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'Noto Sans JP', 'system-ui', 'sans-serif'] },
+          colors: {
+            brand: { 50:'#eef2ff',100:'#e0e7ff',200:'#c7d2fe',300:'#a5b4fc',400:'#818cf8',500:'#6366f1',600:'#4f46e5',700:'#4338ca',800:'#3730a3',900:'#312e81' },
+          },
+          boxShadow: { card:'0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04)' },
+        }
+      }
+    }
+  </script>
+  <style>
+    * { -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
+    [x-cloak] { display:none !important; }
+  </style>
+</head>
+<body class="bg-slate-50/80 min-h-screen font-sans" x-data="analyticsApp()" x-init="init()">
+
+  <header class="bg-white/80 backdrop-blur-lg border-b border-slate-200/60 sticky top-0 z-30">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <a href="/" class="flex items-center gap-2.5 text-slate-400 hover:text-slate-600 transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>
+          <span class="text-xs font-medium">戻る</span>
+        </a>
+        <div class="w-px h-5 bg-slate-200 mx-1"></div>
+        <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center">
+          <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>
+        </div>
+        <h1 class="text-sm font-bold text-slate-900 tracking-tight">分析ダッシュボード</h1>
+      </div>
+    </div>
+  </header>
+
+  <!-- フィルタバー (sticky) -->
+  <div class="sticky top-14 z-20 bg-slate-50/90 backdrop-blur-md border-b border-slate-200/40 -mx-px">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex flex-wrap items-center gap-2.5">
+      <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mr-1">絞り込み</span>
+      <select x-model="filterCategory" @change="reload()" class="border border-slate-200 rounded-lg px-3.5 py-1.5 text-sm font-medium text-slate-600 bg-white hover:border-slate-300 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-400 outline-none transition-colors" style="appearance:none;background-image:url(&quot;data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e&quot;);background-position:right 10px center;background-repeat:no-repeat;background-size:18px;padding-right:40px!important">
+        <option value="">分類: すべて</option>
+        <template x-for="c in categories" :key="c.id">
+          <option :value="c.name" x-text="c.name"></option>
+        </template>
+      </select>
+      <select x-model="filterPeriod" @change="reload()" class="border border-slate-200 rounded-lg px-3.5 py-1.5 text-sm font-medium text-slate-600 bg-white hover:border-slate-300 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-400 outline-none transition-colors" style="appearance:none;background-image:url(&quot;data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e&quot;);background-position:right 10px center;background-repeat:no-repeat;background-size:18px;padding-right:40px!important">
+        <option value="">期間: 全期間</option>
+        <option value="this-week">今週</option>
+        <option value="last-week">先週</option>
+        <option value="this-month">今月</option>
+      </select>
+      <span x-show="periodLabel" x-text="periodLabel" class="text-[11px] font-semibold text-brand-600 bg-brand-50 px-2 py-0.5 rounded-md tracking-wide"></span>
+      <button @click="filterCategory=''; filterPeriod=''; reload()" class="text-[11px] font-medium text-slate-400 hover:text-slate-600 transition-colors">クリア</button>
+      <div class="flex-1"></div>
+      <span x-show="filterCategory || filterPeriod" class="text-[11px] text-slate-400">
+        <span class="font-semibold text-brand-600" x-text="filteredTotal"></span>件
+        <span class="text-slate-300">/</span>
+        <span class="font-medium text-slate-500" x-text="allTotal"></span>件
+      </span>
+    </div>
+  </div>
+
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-5">
+
+    <!-- KPIカード -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div class="bg-white rounded-xl border border-slate-200/60 shadow-card p-4 text-center">
+        <p class="text-2xl font-bold text-slate-900" x-text="kpi.total">-</p>
+        <p class="text-[11px] font-medium text-slate-400 mt-0.5 uppercase tracking-wider">全期間 合計</p>
+      </div>
+      <template x-for="(count, cat) in kpi.byCategory" :key="cat">
+        <div class="bg-white rounded-xl border border-slate-200/60 shadow-card p-4 text-center">
+          <p class="text-2xl font-bold" :class="catColor(cat)" x-text="count">0</p>
+          <p class="text-[11px] font-medium text-slate-400 mt-0.5 uppercase tracking-wider" x-text="cat"></p>
+        </div>
+      </template>
+    </div>
+
+    <!-- 週別推移 (積み上げ棒グラフ) -->
+    <div class="bg-white rounded-xl border border-slate-200/60 shadow-card p-5">
+      <div class="flex items-start justify-between mb-4">
+        <div>
+          <h2 class="text-[13px] font-bold text-slate-700">週別 作業件数推移</h2>
+          <p class="text-[11px] text-slate-400 mt-0.5">作業量の増減傾向を把握。急増している週は体制やプロセスの見直しを検討</p>
+        </div>
+      </div>
+      <div class="h-64"><canvas id="chart-weekly"></canvas></div>
+    </div>
+
+    <!-- 2カラム: 分類別構成比 & 作業種別ランキング -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div class="bg-white rounded-xl border border-slate-200/60 shadow-card p-5">
+        <h2 class="text-[13px] font-bold text-slate-700">分類別 構成比</h2>
+        <p class="text-[11px] text-slate-400 mt-0.5 mb-4">突発保守の割合が高い場合、予防保守の強化を検討</p>
+        <div class="h-56 flex items-center justify-center"><canvas id="chart-category"></canvas></div>
+      </div>
+      <div class="bg-white rounded-xl border border-slate-200/60 shadow-card p-5">
+        <h2 class="text-[13px] font-bold text-slate-700">作業種別 ランキング</h2>
+        <p class="text-[11px] text-slate-400 mt-0.5 mb-4">上位の種別はFAQ化・自動化による削減を検討</p>
+        <div class="h-56"><canvas id="chart-type"></canvas></div>
+      </div>
+    </div>
+
+    <!-- 担当者別 (積み上げ横棒グラフ) -->
+    <div class="bg-white rounded-xl border border-slate-200/60 shadow-card p-5">
+      <h2 class="text-[13px] font-bold text-slate-700">担当者別 作業件数</h2>
+      <p class="text-[11px] text-slate-400 mt-0.5 mb-4">特定メンバーへの偏りがあればナレッジ共有やローテーションを検討</p>
+      <div class="h-72"><canvas id="chart-member"></canvas></div>
+    </div>
+
+    <!-- 分類×作業種別 クロス集計テーブル -->
+    <div class="bg-white rounded-xl border border-slate-200/60 shadow-card overflow-hidden">
+      <div class="px-5 py-3.5 border-b border-slate-100">
+        <h2 class="text-[13px] font-bold text-slate-700">分類 × 作業種別 クロス集計</h2>
+        <p class="text-[11px] text-slate-400 mt-0.5">どの分類にどの種別が集中しているかを把握。案件化すべき作業の特定に活用</p>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full" id="matrix-table">
+          <thead id="matrix-head"></thead>
+          <tbody id="matrix-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- リピート作業 TOP -->
+    <div class="bg-white rounded-xl border border-slate-200/60 shadow-card overflow-hidden">
+      <div class="px-5 py-3.5 border-b border-slate-100">
+        <h2 class="text-[13px] font-bold text-slate-700">リピート作業 TOP10</h2>
+        <p class="text-[11px] text-slate-400 mt-0.5">繰り返し発生する作業は定型化・自動化の候補。頻度が高いものから優先的に対策</p>
+      </div>
+      <div x-show="repeatTasks.length === 0" class="px-5 py-8 text-center text-sm text-slate-400">
+        繰り返し登録された作業はまだありません
+      </div>
+      <table x-show="repeatTasks.length > 0" class="w-full">
+        <thead>
+          <tr class="border-b border-slate-100">
+            <th class="text-left px-5 py-2.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">作業名</th>
+            <th class="text-center px-5 py-2.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-20">回数</th>
+            <th class="text-left px-5 py-2.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-28">最終登録日</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-50">
+          <template x-for="r in repeatTasks" :key="r.name">
+            <tr class="hover:bg-slate-50/60">
+              <td class="px-5 py-2.5 text-sm text-slate-900" x-text="r.name"></td>
+              <td class="px-5 py-2.5 text-sm text-slate-700 font-semibold text-center tabular-nums" x-text="r.count"></td>
+              <td class="px-5 py-2.5 text-sm text-slate-400 tabular-nums" x-text="formatDate(r.last_at)"></td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+
+  <script>
+    const COLORS = ['#8b5cf6','#f59e0b','#0ea5e9','#10b981','#f43f5e','#14b8a6','#6366f1','#f97316'];
+    const COLORS_BG = ['rgba(139,92,246,.15)','rgba(245,158,11,.15)','rgba(14,165,233,.15)','rgba(16,185,129,.15)','rgba(244,63,94,.15)','rgba(20,184,166,.15)','rgba(99,102,241,.15)','rgba(249,115,22,.15)'];
+    const CAT_COLOR_MAP = {};
+
+    Chart.defaults.font.family = "'Inter','Noto Sans JP',sans-serif";
+    Chart.defaults.font.size = 11;
+    Chart.defaults.plugins.legend.labels.usePointStyle = true;
+    Chart.defaults.plugins.legend.labels.pointStyleWidth = 8;
+
+    const WEEKDAYS = ['日','月','火','水','木','金','土'];
+
+    function analyticsApp() {
+      return {
+        filterCategory: '',
+        filterPeriod: '',
+        categories: [],
+        weekEnd: '3',
+        kpi: { total: 0, byCategory: {} },
+        allTotal: 0,
+        filteredTotal: 0,
+        repeatTasks: [],
+        charts: {},
+
+        async init() {
+          const [cats, settings] = await Promise.all([
+            fetch('/api/master/categories').then(r=>r.json()),
+            fetch('/api/master/settings').then(r=>r.json()),
+          ]);
+          this.categories = cats;
+          const we = settings.find(s=>s.key==='default_week_end');
+          if (we) this.weekEnd = we.value;
+
+          // 全件数を取得
+          const allCat = await fetch('/api/analytics/by-category').then(r=>r.json());
+          this.allTotal = Object.values(allCat).reduce((a,b)=>a+b,0);
+
+          await this.reload();
+        },
+
+        _params() {
+          const p = new URLSearchParams();
+          if (this.filterCategory) p.set('category', this.filterCategory);
+          if (this.filterPeriod) p.set('period', this.filterPeriod);
+          return p.toString();
+        },
+
+        async reload() {
+          const q = this._params();
+          const wq = this.filterCategory ? `weeks=8&category=${this.filterCategory}` : 'weeks=8';
+          const [weekly, byCat, byType, byMember, matrix, repeats] = await Promise.all([
+            fetch(`/api/analytics/weekly-trend?${wq}`).then(r=>r.json()),
+            fetch(`/api/analytics/by-category?${q}`).then(r=>r.json()),
+            fetch(`/api/analytics/by-type?${q}`).then(r=>r.json()),
+            fetch(`/api/analytics/by-member?${q}`).then(r=>r.json()),
+            fetch(`/api/analytics/category-type-matrix?${q}`).then(r=>r.json()),
+            fetch(`/api/analytics/repeat-tasks?${q}`).then(r=>r.json()),
+          ]);
+
+          const cats = this.categories.map(c=>c.name);
+          cats.forEach((c,i) => { CAT_COLOR_MAP[c] = COLORS[i % COLORS.length]; });
+          // Add any categories found in data but not in master
+          Object.keys(byCat).forEach(c => { if (!CAT_COLOR_MAP[c]) { CAT_COLOR_MAP[c] = COLORS[Object.keys(CAT_COLOR_MAP).length % COLORS.length]; cats.push(c); }});
+
+          this.kpi.total = Object.values(byCat).reduce((a,b)=>a+b, 0);
+          this.kpi.byCategory = byCat;
+          this.filteredTotal = this.kpi.total;
+          this.repeatTasks = repeats;
+
+          // 全件数を更新（フィルタなし時）
+          if (!this.filterCategory && !this.filterPeriod) {
+            this.allTotal = this.kpi.total;
+          }
+
+          // Destroy existing charts
+          Object.values(this.charts).forEach(c => c.destroy());
+          this.charts = {};
+
+          // Ensure DOM is ready before rendering charts
+          await new Promise(r => setTimeout(r, 50));
+          this.renderWeeklyChart(weekly, cats);
+          this.renderCategoryChart(byCat);
+          this.renderTypeChart(byType);
+          this.renderMemberChart(byMember, cats);
+          this.renderMatrix(matrix);
+        },
+
+        get periodLabel() {
+          if (!this.filterPeriod) return '';
+          const now = new Date(), today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          let start, end;
+          if (this.filterPeriod === 'today') { start = today; end = today; }
+          else if (this.filterPeriod === 'this-week' || this.filterPeriod === 'last-week') {
+            const we = parseInt(this.weekEnd), jsDay = today.getDay(), pyDay = jsDay === 0 ? 6 : jsDay - 1;
+            const diff = (pyDay - we + 7) % 7;
+            end = new Date(today.getTime() - diff * 86400000);
+            if (this.filterPeriod === 'last-week') end = new Date(end.getTime() - 7 * 86400000);
+            start = new Date(end.getTime() - 6 * 86400000);
+          } else if (this.filterPeriod === 'this-month') {
+            start = new Date(now.getFullYear(), now.getMonth(), 1);
+            end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+          }
+          if (!start) return '';
+          const fmt = d => `${d.getMonth()+1}/${d.getDate()}(${WEEKDAYS[d.getDay()]})`;
+          return `${fmt(start)} – ${fmt(end)}`;
+        },
+
+        catColor(cat) {
+          const i = this.categories.findIndex(c=>c.name===cat);
+          return ['text-violet-600','text-amber-600','text-sky-600','text-emerald-600','text-rose-600'][(i>=0?i:0) % 5] || 'text-slate-600';
+        },
+
+        formatDate(s) {
+          if (!s) return '-';
+          const d = new Date(s);
+          return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+        },
+
+        renderWeeklyChart(data, cats) {
+          const ctx = document.getElementById('chart-weekly');
+          const datasets = cats.map((cat, i) => ({
+            label: cat,
+            data: data.map(w => w.by_category[cat] || 0),
+            backgroundColor: COLORS[i % COLORS.length],
+            borderRadius: 4,
+            barPercentage: 0.7,
+          }));
+          this.charts.weekly = new Chart(ctx, {
+            type: 'bar',
+            data: { labels: data.map(w => w.label), datasets },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              plugins: { legend: { position: 'top', align: 'end' } },
+              scales: {
+                x: { stacked: true, grid: { display: false } },
+                y: { stacked: true, beginAtZero: true, ticks: { stepSize: 1 } },
+              },
+            },
+          });
+        },
+
+        renderCategoryChart(data) {
+          const ctx = document.getElementById('chart-category');
+          const labels = Object.keys(data), values = Object.values(data);
+          this.charts.category = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+              labels,
+              datasets: [{ data: values, backgroundColor: labels.map((_, i) => COLORS[i % COLORS.length]), borderWidth: 0, hoverOffset: 8 }],
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              cutout: '60%',
+              plugins: {
+                legend: { position: 'right', labels: { padding: 16 } },
+              },
+            },
+          });
+        },
+
+        renderTypeChart(data) {
+          const ctx = document.getElementById('chart-type');
+          const labels = Object.keys(data), values = Object.values(data);
+          this.charts.type = new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels,
+              datasets: [{
+                data: values,
+                backgroundColor: labels.map((_, i) => COLORS[(i + 3) % COLORS.length]),
+                borderRadius: 4,
+                barPercentage: 0.6,
+              }],
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              indexAxis: 'y',
+              plugins: { legend: { display: false } },
+              scales: {
+                x: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: 'rgba(0,0,0,.04)' } },
+                y: { grid: { display: false } },
+              },
+            },
+          });
+        },
+
+        renderMemberChart(data, cats) {
+          const ctx = document.getElementById('chart-member');
+          const members = Object.keys(data);
+          const datasets = cats.map((cat, i) => ({
+            label: cat,
+            data: members.map(m => data[m][cat] || 0),
+            backgroundColor: COLORS[i % COLORS.length],
+            borderRadius: 4,
+            barPercentage: 0.6,
+          }));
+          this.charts.member = new Chart(ctx, {
+            type: 'bar',
+            data: { labels: members, datasets },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              indexAxis: 'y',
+              plugins: { legend: { position: 'top', align: 'end' } },
+              scales: {
+                x: { stacked: true, beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: 'rgba(0,0,0,.04)' } },
+                y: { stacked: true, grid: { display: false } },
+              },
+            },
+          });
+        },
+
+        renderMatrix(data) {
+          const thCls = 'px-4 py-2.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider text-center';
+          let headHtml = `<tr class="border-b border-slate-100"><th class="${thCls} text-left">分類＼種別</th>`;
+          data.types.forEach(t => { headHtml += `<th class="${thCls}">${t}</th>`; });
+          headHtml += `<th class="${thCls} font-bold">計</th></tr>`;
+          document.getElementById('matrix-head').innerHTML = headHtml;
+
+          let bodyHtml = '';
+          data.categories.forEach(cat => {
+            let rowTotal = 0;
+            bodyHtml += `<tr class="border-b border-slate-50 hover:bg-slate-50/60"><td class="px-4 py-2.5 text-sm font-medium text-slate-700">${cat}</td>`;
+            data.types.forEach(t => {
+              const v = data.matrix[cat][t] || 0;
+              rowTotal += v;
+              const bg = v > 0 ? 'bg-brand-50 text-brand-700 font-semibold' : 'text-slate-300';
+              bodyHtml += `<td class="px-4 py-2.5 text-sm text-center ${bg}">${v || '-'}</td>`;
+            });
+            bodyHtml += `<td class="px-4 py-2.5 text-sm text-center font-bold text-slate-700">${rowTotal}</td></tr>`;
+          });
+          // 列合計
+          bodyHtml += `<tr class="bg-slate-50/80"><td class="px-4 py-2.5 text-sm font-bold text-slate-700">計</td>`;
+          let grandTotal = 0;
+          data.types.forEach(t => {
+            let colTotal = 0;
+            data.categories.forEach(cat => { colTotal += data.matrix[cat][t] || 0; });
+            grandTotal += colTotal;
+            bodyHtml += `<td class="px-4 py-2.5 text-sm text-center font-bold text-slate-600">${colTotal}</td>`;
+          });
+          bodyHtml += `<td class="px-4 py-2.5 text-sm text-center font-bold text-slate-900">${grandTotal}</td></tr>`;
+          document.getElementById('matrix-body').innerHTML = bodyHtml;
+        },
+      };
+    }
+  </script>
+</body>
+</html>

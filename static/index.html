@@ -89,6 +89,9 @@
         <h1 class="text-sm font-bold text-slate-900 tracking-tight">PJ案件外 作業管理</h1>
       </div>
       <div class="flex items-center gap-2">
+        <a href="/analytics.html" class="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors" title="分析">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>
+        </a>
         <a href="/master.html" class="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors" title="マスタ管理">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 010 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 010-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
         </a>
@@ -154,8 +157,8 @@
     <div class="bg-white rounded-xl border border-slate-200/60 shadow-card overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full">
-          <thead id="table-head" x-effect="renderTableHead()"></thead>
-          <tbody id="task-body" class="divide-y divide-slate-50" x-effect="renderTableBody()"></tbody>
+          <thead id="table-head" x-effect="groupBy; sortKey; sortDir; renderTableHead()"></thead>
+          <tbody id="task-body" class="divide-y divide-slate-50" x-effect="tasks; groupBy; sortKey; sortDir; renderTableBody()"></tbody>
         </table>
       </div>
       <div x-show="tasks.length === 0" class="py-16 text-center">
@@ -261,6 +264,8 @@
         editingId: null,
         deleteTarget: null,
         form: { name: '', category: '', type: '' },
+        sortKey: 'created_at',
+        sortDir: 'desc',
         categories: [],
         taskTypes: [],
 
@@ -326,17 +331,46 @@
 
         escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; },
 
+        toggleSort(key) {
+          if (this.sortKey === key) {
+            this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+          } else {
+            this.sortKey = key;
+            this.sortDir = key === 'created_at' ? 'desc' : 'asc';
+          }
+        },
+
+        get sortedTasks() {
+          const k = this.sortKey, dir = this.sortDir === 'asc' ? 1 : -1;
+          return [...this.tasks].sort((a, b) => {
+            let va = a[k] ?? '', vb = b[k] ?? '';
+            if (k === 'created_at') { va = new Date(va); vb = new Date(vb); }
+            else { va = String(va).toLowerCase(); vb = String(vb).toLowerCase(); }
+            if (va < vb) return -1 * dir;
+            if (va > vb) return 1 * dir;
+            return 0;
+          });
+        },
+
         renderTableHead() {
           const el = document.getElementById('table-head'); if (!el) return;
-          const c = 'text-left px-5 py-2.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider';
+          const self = this;
+          const arrow = (key) => {
+            if (this.sortKey !== key) return '<span class="text-slate-300 ml-0.5">⇅</span>';
+            return this.sortDir === 'asc' ? '<span class="text-brand-500 ml-0.5">↑</span>' : '<span class="text-brand-500 ml-0.5">↓</span>';
+          };
+          const c = 'text-left px-5 py-2.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-600 transition-colors select-none';
           const cols = [];
-          if (this.groupBy !== 'category') cols.push(`<th class="${c}">分類</th>`);
-          cols.push(`<th class="${c}">作業名</th>`);
-          if (this.groupBy !== 'type') cols.push(`<th class="${c}">作業種別</th>`);
-          if (this.groupBy !== 'registeredBy') cols.push(`<th class="${c}">担当者</th>`);
-          cols.push(`<th class="${c}">登録日</th>`);
+          if (this.groupBy !== 'category') cols.push(`<th class="${c}" data-sort="category">分類${arrow('category')}</th>`);
+          cols.push(`<th class="${c}" data-sort="name">作業名${arrow('name')}</th>`);
+          if (this.groupBy !== 'type') cols.push(`<th class="${c}" data-sort="type">作業種別${arrow('type')}</th>`);
+          if (this.groupBy !== 'registeredBy') cols.push(`<th class="${c}" data-sort="registered_by">担当者${arrow('registered_by')}</th>`);
+          cols.push(`<th class="${c}" data-sort="created_at">登録日${arrow('created_at')}</th>`);
           cols.push(`<th class="text-right px-5 py-2.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-20">操作</th>`);
           el.innerHTML = `<tr class="border-b border-slate-100">${cols.join('')}</tr>`;
+          el.querySelectorAll('[data-sort]').forEach(th => {
+            th.addEventListener('click', () => { self.toggleSort(th.dataset.sort); });
+          });
         },
 
         renderTableBody() {
@@ -356,12 +390,13 @@
             return `<tr class="task-row hover:bg-slate-50/60 transition-colors">${c.join('')}</tr>`;
           }
 
+          const sorted = this.sortedTasks;
           let h = '';
-          if (gb === 'none') { this.tasks.forEach(t => { h += row(t); }); }
+          if (gb === 'none') { sorted.forEach(t => { h += row(t); }); }
           else {
             const kf = { category: t=>t.category, type: t=>t.type||'未設定', registeredBy: t=>t.registered_by||'不明' }[gb];
             const om = { category: CATEGORY_ORDER, type: [...TYPE_ORDER,'未設定'], registeredBy: this.members.map(m=>m.name) };
-            const o = om[gb]||[], g = {}; o.forEach(k=>{g[k]=[];}); this.tasks.forEach(t=>{const k=kf(t); if(!g[k])g[k]=[]; g[k].push(t);});
+            const o = om[gb]||[], g = {}; o.forEach(k=>{g[k]=[];}); sorted.forEach(t=>{const k=kf(t); if(!g[k])g[k]=[]; g[k].push(t);});
             Object.entries(g).forEach(([l,items])=>{
               if(!items.length) return;
               h += `<tr><td colspan="${cc}" class="bg-slate-50/80 px-5 py-2 border-y border-slate-100"><span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">${this.escapeHtml(l)}</span><span class="text-[10px] font-semibold text-slate-400 ml-2 bg-slate-200/50 px-1.5 py-0.5 rounded">${items.length}</span></td></tr>`;
